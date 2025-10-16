@@ -7,10 +7,11 @@
 
 **Real-time AWS Route53 domain and subdomain scanner with live status detection, multi-threaded scanning, and professional PDF reporting.**
 
-![Dashboard Preview]
+[Dashboard Preview]
 <img width="1643" height="856" alt="image" src="https://github.com/user-attachments/assets/79a2e378-a8c8-442c-aafe-4915ce0059db" />
 
-![Report Sample]
+[Report Sample]
+
 <img width="647" height="487" alt="image" src="https://github.com/user-attachments/assets/b0243971-f77c-4fb8-b2a6-2f3c1836f3b1" />
 
 ## ✨ Features
