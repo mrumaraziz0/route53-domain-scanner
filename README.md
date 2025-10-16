@@ -1,4 +1,4 @@
-# Route53 Domain Scanner
+# Route53 Live Domain Scanner
 
 ![Python](https://img.shields.io/badge/Python-3.7%2B-blue?logo=python)
 ![Flask](https://img.shields.io/badge/Flask-2.0%2B-black?logo=flask)
@@ -8,12 +8,23 @@
 **Real-time AWS Route53 domain and subdomain scanner with live status detection, multi-threaded scanning, and professional PDF reporting.**
 
 [Dashboard Preview]
+
 <img width="1540" height="800" alt="image" src="https://github.com/user-attachments/assets/c9db9936-6161-4f6b-87cc-1f35021fe965" />
 
+<img width="1212" height="442" alt="image" src="https://github.com/user-attachments/assets/1aec04e7-e142-40f2-8d52-a02358283ba4" />
+
+[Email Feature]
+
+<img width="1493" height="321" alt="image" src="https://github.com/user-attachments/assets/8edda8ce-5130-418f-bfb1-8f6d675f44fa" />
 
 [Report Sample]
 
-<img width="647" height="487" alt="image" src="https://github.com/user-attachments/assets/b0243971-f77c-4fb8-b2a6-2f3c1836f3b1" />
+<img width="791" height="481" alt="image" src="https://github.com/user-attachments/assets/8df316ac-4e41-46ac-8147-9d2d652b834a" />
+
+<img width="780" height="797" alt="image" src="https://github.com/user-attachments/assets/178e6500-e902-4476-b8f0-8f11ef45986b" />
+
+<img width="798" height="659" alt="image" src="https://github.com/user-attachments/assets/40be7440-2565-452d-95b8-45ef590a5ac6" />
+
 
 ## ✨ Features
 
@@ -40,13 +51,18 @@ Professional styling with corporate branding
 
 - 
 # In app.py - REPLACE THESE VALUES
-AWS_ACCESS_KEY_ID = "YOUR_ACCESS_KEY"
-AWS_SECRET_ACCESS_KEY = "YOUR_SECRET_KEY"
-AWS_SESSION_TOKEN = "YOUR_SESSION_TOKEN"
 
-SMTP_SERVER = "smtp.gmail.com"  # Gmail example
+**AWS_ACCESS_KEY_ID = "YOUR_ACCESS_KEY"
+
+AWS_SECRET_ACCESS_KEY = "YOUR_SECRET_KEY"
+
+AWS_SESSION_TOKEN = "YOUR_SESSION_TOKEN"**
+
+**SMTP_SERVER = "smtp.gmail.com"  # Gmail example
+
 EMAIL_USERNAME = "your_email@gmail.com"
-EMAIL_PASSWORD = "your_app_password"  # SMTP  Password
+
+EMAIL_PASSWORD = "your_app_password"  # SMTP  Password**
 
 
 
@@ -70,6 +86,8 @@ pip install -r requirements.txt
 # 4. Verify installation
 python -c "from weasyprint import HTML; print('WeasyPrint OK')"
 
+# 5. Verify installation
+python3 app.py OR python app.py
 🍎 macOS Installation Commands
 # 1. Install Homebrew (if not installed)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
