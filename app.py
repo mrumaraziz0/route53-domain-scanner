@@ -532,7 +532,7 @@ def generate_pdf_report(domains):
             
             <div class="footer">
                 <p>Report generated on {time.strftime("%Y-%m-%d %H:%M:%S")}</p>
-                <p>Route53 Domain Scanner v2.6 - Clean Layout</p>
+                <p>Ma href="https://github.com/mrumaraziz0/">Route53 Domain Scanner </a></p>
             </div>
         </div>
     </body>
@@ -553,7 +553,7 @@ def send_email_with_pdf(recipient_email, pdf_path):
         body = """
         Hello,
         
-        Attached is your comprehensive Route53 Security Report featuring:
+        Attached is your comprehensive Route53 Live Domain Report featuring:
         
         • Overall status distribution chart
         • Domain vs Subdomain breakdown analysis
@@ -596,7 +596,7 @@ def index():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Route53 Multi-Thread Scanner</title>
+        <title>Route53 Live Domain Scanner</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <style>
@@ -614,7 +614,7 @@ def index():
     <body>
         <div class="container">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1>Route53 Multi-Thread Scanner</h1>
+                <h1>Route53 Live Domain Scanner Scanner</h1>
                 <span class="badge speed-badge">Advanced Analytics</span>
             </div>
             
@@ -901,7 +901,7 @@ def generate_pdf():
             return jsonify({"error": "No scan data available"}), 400
         
         pdf_path = generate_pdf_report(domains)
-        return send_file(pdf_path, as_attachment=True, download_name='route53_security_report_advanced.pdf')
+        return send_file(pdf_path, as_attachment=True, download_name='route53_report_advanced.pdf')
     except Exception as e:
         return jsonify({"error": f"PDF generation failed: {str(e)}"}), 500
 
