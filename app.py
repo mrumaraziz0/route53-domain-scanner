@@ -21,7 +21,7 @@ try:
     from weasyprint import HTML
     USE_WEASYPRINT = True
 except ImportError:
-    print("âš ï¸  WeasyPrint not installed. Install with: pip install weasyprint")
+    print("⚠️  WeasyPrint not installed. Install with: pip install weasyprint")
     USE_WEASYPRINT = False
 
 app = Flask(__name__)
@@ -30,6 +30,7 @@ app = Flask(__name__)
 AWS_ACCESS_KEY_ID = "REPLACE WITH YOUR KEY"
 AWS_SECRET_ACCESS_KEY = "REPLACE WITH YOUR KEY"
 AWS_SESSION_TOKEN = "REPLACE WITH YOUR KEY"
+
 # Email configuration (UPDATE THESE!)
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -134,7 +135,7 @@ def background_scan():
 
 def generate_overall_status_chart(domains):
     if not domains:
-        return None
+        return ""
         
     all_items = []
     for d in domains:
@@ -158,11 +159,11 @@ def generate_overall_status_chart(domains):
     plt.savefig(img, format='PNG', bbox_inches='tight', dpi=150)
     img.seek(0)
     plt.close()
-    return base64.b64encode(img.getvalue()).decode()
+    return base64.b64encode(img.getvalue()).decode('utf-8')
 
 def generate_domain_breakdown_chart(domains):
     if not domains:
-        return None
+        return ""
     
     domain_lives = sum(1 for d in domains if d['live'])
     domain_deads = sum(1 for d in domains if not d['live'])
@@ -190,7 +191,7 @@ def generate_domain_breakdown_chart(domains):
     plt.savefig(img, format='PNG', dpi=150)
     img.seek(0)
     plt.close()
-    return base64.b64encode(img.getvalue()).decode()
+    return base64.b64encode(img.getvalue()).decode('utf-8')
 
 def generate_domain_subdomain_charts(domains):
     charts = []
@@ -210,7 +211,7 @@ def generate_domain_subdomain_charts(domains):
                 colors=['#28a745', '#dc3545'],
                 autopct='%1.1f%%' if (live_subs + dead_subs) > 1 else None,
                 startangle=90)
-        plt.title(f"{domain['domain']} Subdomains", fontsize=12, pad=15)
+        plt.title(f"Subdomain Status", fontsize=10, pad=10)
         
         img = io.BytesIO()
         plt.savefig(img, format='PNG', bbox_inches='tight', dpi=120)
@@ -218,7 +219,7 @@ def generate_domain_subdomain_charts(domains):
         plt.close()
         charts.append({
             'domain': domain['domain'],
-            'chart': base64.b64encode(img.getvalue()).decode()
+            'chart': base64.b64encode(img.getvalue()).decode('utf-8')
         })
     
     return charts
@@ -236,17 +237,51 @@ def generate_pdf_report(domains):
     live_domains = sum(1 for d in domains if d['live'])
     live_subdomains = sum(1 for d in domains for s in d['subdomains'] if s['live'])
     
+    table_rows = ""
+    for domain in domains:
+        domain_status = "Live" if domain['live'] else "Non-Live"
+        domain_class = "live" if domain['live'] else "dead"
+        live_subs = sum(1 for s in domain['subdomains'] if s['live'])
+        total_subs = len(domain['subdomains'])
+        
+        if total_subs == 0:
+            subdomain_html = "<span class='text-muted'>None</span>"
+        else:
+            sub_names = [sub['name'] for sub in domain['subdomains']]
+            formatted_subs = []
+            for i in range(0, len(sub_names), 4):
+                chunk = sub_names[i:i+4]
+                formatted_subs.append(", ".join(chunk))
+            subdomain_html = "<div class='subdomain-list'>" + "<br>".join(formatted_subs) + "</div>"
+        
+        table_rows += f"""
+        <tr>
+            <td class="domain-col">{domain['domain']}</td>
+            <td class="status-col"><span class="{domain_class}">{domain_status}</span></td>
+            <td class="subdomains-col">{subdomain_html}</td>
+        </tr>
+        """
+    
     domain_charts_html = ""
     if domain_charts:
         for chart_data in domain_charts:
+            domain_name = chart_data['domain']
+            target_domain = next((d for d in domains if d['domain'] == domain_name), None)
+            if target_domain:
+                live_count = sum(1 for s in target_domain['subdomains'] if s['live'])
+                total_count = len(target_domain['subdomains'])
+                chart_title = f"{domain_name} ({live_count}/{total_count} Live)"
+            else:
+                chart_title = domain_name
+                
             domain_charts_html += f"""
-            <div style="display: inline-block; width: 48%; margin: 10px 1%; vertical-align: top; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                <h4 style="margin-top: 0; color: #495057;">{chart_data['domain']}</h4>
-                <img src="data:image/png;base64,{chart_data['chart']}" style="width: 100%; height: auto; border-radius: 4px;">
+            <div class="domain-chart-item">
+                <h4>{chart_title}</h4>
+                <img src="data:image/png;base64,{chart_data['chart']}" alt="Subdomain Chart">
             </div>
             """
     else:
-        domain_charts_html = "<p style='color: #6c757d;'>No subdomains found to generate charts.</p>"
+        domain_charts_html = '<p style="color: #6c757d; text-align: center;">No subdomains found to generate charts.</p>'
     
     html_content = f"""
     <!DOCTYPE html>
@@ -254,172 +289,251 @@ def generate_pdf_report(domains):
     <head>
         <meta charset="utf-8">
         <style>
+            @page {{
+                size: A4;
+                margin: 15mm 10mm 15mm 10mm;
+            }}
             body {{ 
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                margin: 20px; 
-                background: #f8f9fa;
+                margin: 0;
+                padding: 0;
+                background: white;
                 color: #333;
-                line-height: 1.6;
+                line-height: 1.3;
+                font-size: 9pt;
+            }}
+            .container {{
+                width: 100%;
+                max-width: none;
+                margin: 0;
+                padding: 0 5mm;
             }}
             .header {{ 
                 background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); 
                 color: white; 
-                padding: 30px; 
+                padding: 20mm 0;
                 text-align: center; 
-                border-radius: 10px; 
-                margin-bottom: 30px;
+                margin-bottom: 10mm;
+                page-break-inside: avoid;
+            }}
+            .header h1 {{
+                font-size: 18pt;
+                margin: 0;
+                padding: 0 10mm;
+            }}
+            .header p {{
+                font-size: 12pt;
+                margin-top: 5mm;
+                padding: 0 10mm;
             }}
             .summary {{ 
                 display: flex; 
-                justify-content: space-around; 
+                justify-content: space-between; 
                 flex-wrap: wrap;
-                gap: 15px;
-                margin: 20px 0 30px;
+                gap: 8mm;
+                margin: 8mm 0 12mm;
+                page-break-inside: avoid;
             }}
             .stat-card {{ 
                 background: white; 
-                padding: 20px; 
-                border-radius: 8px; 
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+                padding: 6mm;
+                border: 1px solid #e9ecef;
+                border-radius: 4mm; 
                 text-align: center; 
-                min-width: 140px;
+                min-width: 40mm;
                 flex: 1;
-                max-width: 200px;
+                box-sizing: border-box;
             }}
             .stat-number {{ 
-                font-size: 2em; 
+                font-size: 16pt; 
                 font-weight: bold; 
                 color: #0d6efd; 
+                margin-bottom: 2mm;
             }}
             .chart-container {{ 
                 background: white;
-                padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                margin: 25px 0;
+                padding: 8mm;
+                border: 1px solid #e9ecef;
+                border-radius: 4mm;
+                margin: 8mm 0;
+                page-break-inside: avoid;
+            }}
+            .chart-container h2 {{
+                text-align: center; 
+                margin: 0 0 6mm 0;
+                font-size: 12pt;
+                color: #495057;
             }}
             .chart-container img {{ 
                 max-width: 100%; 
                 height: auto; 
-                border: 1px solid #dee2e6; 
-                border-radius: 8px;
+                display: block;
+                margin: 0 auto;
             }}
             table {{ 
-                width: 100%; 
+                width: 100% !important; 
                 border-collapse: collapse; 
-                margin: 20px 0; 
+                margin: 10mm 0; 
                 background: white; 
-                border-radius: 8px; 
-                overflow: hidden;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                font-size: 8.5pt;
+                table-layout: fixed;
             }}
             th, td {{ 
-                padding: 15px; 
+                padding: 4mm 3mm;
                 text-align: left; 
-                border-bottom: 1px solid #dee2e6;
+                border: 1px solid #e9ecef;
+                vertical-align: top;
+                word-wrap: break-word;
+                line-height: 1.2;
             }}
             th {{ 
                 background: #f8f9fa; 
                 font-weight: bold; 
                 color: #495057;
+                font-size: 9pt;
+                text-align: center;
             }}
-            .live {{ color: #28a745; font-weight: bold; }}
-            .dead {{ color: #dc3545; font-weight: bold; }}
+            .domain-col {{ width: 30%; }}
+            .status-col {{ width: 20%; text-align: center; }}
+            .subdomains-col {{ width: 50%; }}
+            .live {{ 
+                color: #28a745; 
+                font-weight: bold; 
+                white-space: nowrap;
+            }}
+            .dead {{ 
+                color: #dc3545; 
+                font-weight: bold; 
+                white-space: nowrap;
+            }}
+            .subdomain-list {{
+                font-size: 8pt;
+                line-height: 1.3;
+            }}
+            .text-muted {{
+                color: #6c757d;
+                font-style: italic;
+            }}
             .footer {{ 
                 text-align: center; 
-                margin-top: 30px; 
+                margin-top: 10mm; 
                 color: #6c757d; 
-                font-size: 0.9em;
+                font-size: 8pt;
+                padding-top: 5mm;
+                border-top: 1px solid #e9ecef;
+            }}
+            tr {{
+                page-break-inside: avoid;
+            }}
+            .domain-charts-container {{
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6mm;
+                justify-content: center;
+            }}
+            .domain-chart-item {{
+                flex: 1;
+                min-width: 80mm;
+                max-width: 120mm;
+                background: white;
+                padding: 6mm;
+                border: 1px solid #e9ecef;
+                border-radius: 4mm;
+                text-align: center;
+                page-break-inside: avoid;
+            }}
+            .domain-chart-item h4 {{
+                margin: 0 0 4mm 0;
+                font-size: 10pt;
+                color: #495057;
+            }}
+            .domain-chart-item img {{
+                max-width: 100%;
+                height: auto;
+                border-radius: 2mm;
+            }}
+            .section-heading {{
+                margin: 12mm 0 6mm 0;
+                font-size: 12pt;
+                color: #495057;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }}
+            .live-count-badge {{
+                background: #e9ecef;
+                padding: 2mm 4mm;
+                border-radius: 3mm;
+                font-size: 9pt;
+                color: #495057;
             }}
         </style>
     </head>
     <body>
-        <div class="header">
-            <h1>Route53 Security Report</h1>
-            <p>Comprehensive Domain & Subdomain Analysis</p>
-        </div>
-        
-        <div class="summary">
-            <div class="stat-card">
-                <div class="stat-number">{total_domains}</div>
-                <div>Total Domains</div>
+        <div class="container">
+            <div class="header">
+                <h1>Route53 Live Domain Report</h1>
+                <p>Comprehensive Domain & Subdomain Analysis</p>
             </div>
-            <div class="stat-card">
-                <div class="stat-number">{total_subdomains}</div>
-                <div>Total Subdomains</div>
+            
+            <div class="summary">
+                <div class="stat-card">
+                    <div class="stat-number">{total_domains}</div>
+                    <div>Total Domains</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{total_subdomains}</div>
+                    <div>Total Subdomains</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{live_domains}</div>
+                    <div>Live Domains</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{live_subdomains}</div>
+                    <div>Live Subdomains</div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-number">{live_domains}</div>
-                <div>Live Domains</div>
+            
+            <div class="chart-container">
+                <h2>Overall Status Distribution</h2>
+                <img src="data:image/png;base64,{overall_chart}" alt="Overall Status Chart">
             </div>
-            <div class="stat-card">
-                <div class="stat-number">{live_subdomains}</div>
-                <div>Live Subdomains</div>
+            
+            <div class="chart-container">
+                <h2>Domain vs Subdomain Breakdown</h2>
+                <img src="data:image/png;base64,{breakdown_chart}" alt="Breakdown Chart">
             </div>
-        </div>
-        
-        <div class="chart-container">
-            <h2 style="text-align: center; margin-bottom: 20px;">Overall Status Distribution</h2>
-            <img src="data:image/png;base64,{overall_chart}" alt="Overall Status Chart">
-        </div>
-        
-        <div class="chart-container">
-            <h2 style="text-align: center; margin-bottom: 20px;">Domain vs Subdomain Breakdown</h2>
-            <img src="data:image/png;base64,{breakdown_chart}" alt="Breakdown Chart">
-        </div>
-        
-        <div class="chart-container">
-            <h2 style="text-align: center; margin-bottom: 20px;">Per-Domain Subdomain Analysis</h2>
-            <div style="text-align: center;">
-                {domain_charts_html}
+            
+            <div class="chart-container">
+                <h2>Per-Domain Subdomain Analysis</h2>
+                <div class="domain-charts-container">
+                    {domain_charts_html}
+                </div>
             </div>
-        </div>
-        
-        <h2 style="margin: 30px 0 20px;">Detailed Domain Analysis</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Domain</th>
-                    <th>Status</th>
-                    <th>Subdomains</th>
-                    <th>Live Subdomains</th>
-                </tr>
-            </thead>
-            <tbody>
-    """
-    
-    for domain in domains:
-        domain_status = "Live" if domain['live'] else "Non-Live"
-        domain_class = "live" if domain['live'] else "dead"
-        live_subs = sum(1 for s in domain['subdomains'] if s['live'])
-        total_subs = len(domain['subdomains'])
-        
-        subdomain_list = "<ul style='margin: 0; padding-left: 20px;'>"
-        if total_subs == 0:
-            subdomain_list = "<span style='color: #6c757d;'>None</span>"
-        else:
-            for sub in domain['subdomains']:
-                sub_status = "Live" if sub['live'] else "Non-Live"
-                sub_class = "live" if sub['live'] else "dead"
-                subdomain_list += f"<li>{sub['name']} <span class='{sub_class}'>[{sub_status}]</span></li>"
-            subdomain_list += "</ul>"
-        
-        html_content += f"""
-            <tr>
-                <td><strong>{domain['domain']}</strong></td>
-                <td><span class="{domain_class}">{domain_status}</span></td>
-                <td>{subdomain_list}</td>
-                <td>{live_subs}/{total_subs}</td>
-            </tr>
-        """
-    
-    html_content += f"""
-            </tbody>
-        </table>
-        
-        <div class="footer">
-            <p>Report generated on {time.strftime("%Y-%m-%d %H:%M:%S")}</p>
-            <p>Route53 Domain Scanner v2.3 - Advanced Analytics</p>
+            
+            <div class="section-heading">
+                <span>Detailed Domain Analysis</span>
+                <span class="live-count-badge">{live_subdomains}/{total_subdomains} Live Subdomains</span>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Domain</th>
+                        <th>Status</th>
+                        <th>Subdomains</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {table_rows}
+                </tbody>
+            </table>
+            
+            <div class="footer">
+                <p>Report generated on {time.strftime("%Y-%m-%d %H:%M:%S")}</p>
+                <p>Route53 Domain Scanner v2.6 - Clean Layout</p>
+            </div>
         </div>
     </body>
     </html>
@@ -434,17 +548,17 @@ def send_email_with_pdf(recipient_email, pdf_path):
         msg = MIMEMultipart()
         msg['From'] = EMAIL_USERNAME
         msg['To'] = recipient_email
-        msg['Subject'] = "Route53 Security Report - Advanced Analytics"
+        msg['Subject'] = "Route53 Live Domain Report - Advanced Analytics"
         
         body = """
         Hello,
         
         Attached is your comprehensive Route53 Security Report featuring:
         
-        â€¢ Overall status distribution chart
-        â€¢ Domain vs Subdomain breakdown analysis
-        â€¢ Individual per-domain subdomain charts
-        â€¢ Detailed live/non-live status for all entries
+        • Overall status distribution chart
+        • Domain vs Subdomain breakdown analysis
+        • Individual per-domain subdomain charts
+        • Detailed live/non-live status for all entries
         
         This report provides complete visibility into your DNS infrastructure health.
         
@@ -515,7 +629,6 @@ def index():
                 </button>
             </div>
             
-            <!-- Email Modal -->
             <div class="modal fade" id="emailModal" tabindex="-1">
                 <div class="modal-dialog">
                     <div class="modal-content">
@@ -554,11 +667,11 @@ def index():
             <div id="results"></div>
             <div id="error" class="alert alert-danger hidden"></div>
             <div id="completed" class="alert alert-success hidden">
-                <h5>âœ… Scan Completed!</h5>
+                <h5>✅ Scan Completed!</h5>
                 <p id="completionStats"></p>
             </div>
             <div id="emailSuccess" class="alert alert-success hidden">
-                <h5>ðŸ“§ Email Sent Successfully!</h5>
+                <h5>📧 Email Sent Successfully!</h5>
                 <p>Report has been sent to <span id="sentEmail"></span></p>
             </div>
         </div>
@@ -650,8 +763,8 @@ def index():
             card.dataset.domain = domain.domain;
             
             const domainStatus = domain.live ? 
-                '<span class="live">â— Live</span>' : 
-                '<span class="dead">â— Non-Live</span>';
+                '<span class="live">● Live</span>' : 
+                '<span class="dead">● Non-Live</span>';
             
             let subsHtml = '<ul class="mb-0">';
             if (domain.subdomains.length === 0) {
@@ -818,23 +931,22 @@ def send_email():
         return jsonify({"error": f"Email sending failed: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    # Check WeasyPrint installation
     if not USE_WEASYPRINT:
-        print("âŒ FATAL: WeasyPrint is required for PDF generation!")
+        print("❌ FATAL: WeasyPrint is required for PDF generation!")
         print("   Install it with: pip install weasyprint")
         print("   Then install system dependencies:")
         print("   Ubuntu/Debian: sudo apt-get install build-essential python3-dev python3-pip libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info")
         exit(1)
     
-    print("ðŸš€ Route53 Scanner with Advanced Analytics")
-    print("   â€¢ Multi-threaded scanning")
-    print("   â€¢ 3 specialized charts in PDF")
-    print("   â€¢ Per-domain subdomain analysis")
-    print("   â€¢ Email delivery")
-    print("\nðŸ“§ EMAIL CONFIGURATION REQUIRED:")
+    print("🚀 Route53 Scanner with Advanced Analytics")
+    print("   • Multi-threaded scanning")
+    print("   • 3 specialized charts in PDF")
+    print("   • Per-domain subdomain analysis")
+    print("   • Email delivery")
+    print("\n📧 EMAIL CONFIGURATION REQUIRED:")
     print(f"   SMTP_SERVER: {SMTP_SERVER}")
     print(f"   EMAIL_USERNAME: {EMAIL_USERNAME}")
-    print("   EMAIL_PASSWORD: [SET IN CODE]")
-    print("\n   Visit: http://localhost:5007")
+    print("   EMAIL_PASSWORD: your_app_password")
+    print("\n   Visit: http://localhost:5000")
     
     app.run(host='0.0.0.0', port=5000, debug=False)
