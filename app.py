@@ -615,7 +615,7 @@ def index():
         <div class="container">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1>Route53 Live Domain Scanner Scanner</h1>
-                <span class="badge speed-badge">Advanced Analytics</span>
+                <span class="badge speed-badge">Live =Domain & Subdomain Scanner</span>
             </div>
             
             <div class="d-flex gap-2 mb-4 flex-wrap">
@@ -659,7 +659,7 @@ def index():
                             <div id="progressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
                         </div>
                         <p id="progressText" class="mt-2 mb-0">Initializing...</p>
-                        <p class="text-muted small mt-2">Using 10 parallel threads for maximum speed</p>
+                        <p class="text-muted small mt-2">Using Multi threads for maximum speed</p>
                     </div>
                 </div>
             </div>
